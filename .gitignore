@@ -1,0 +1,5 @@
+etalons/
+__pycache__/
+out/
+*.pyc
+.env
