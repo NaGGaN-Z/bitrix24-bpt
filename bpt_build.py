@@ -10,11 +10,15 @@
   SetVariableActivity, SetFieldActivity, IfElseActivity(+Branch),
   CrmCreateDynamicActivity, CrmUpdateDynamicActivity,
   WhileActivity, ForEachActivity,
-  TerminateActivity, ApproveActivity, RequestInformationActivity(+Optional),
-  ReviewActivity, DelayActivity (интервал|дата), CrmChangeStatusActivity,
+  TerminateActivity (дедупликатор|простой стоп), ApproveActivity,
+  RequestInformationActivity(+Optional), ReviewActivity,
+  DelayActivity (интервал|дата), CrmChangeStatusActivity,
   CrmTimelineCommentAdd, IMNotifyActivity,
-  AbsenceActivity, Calendar2Activity
-  (формы 2026-09-02 сняты с projects/bpt/etalons/bp-1177.bpt и bp-1187.bpt)
+  AbsenceActivity, Calendar2Activity, LogActivity,
+  CreateDocumentActivity (+CrmDeal/CrmContact/Lists), StartWorkflowActivity,
+  WebHookActivity, rest_<hash>
+  (формы 2026-09-02 сняты с etalons/bp-1177.bpt и bp-1187.bpt;
+   документы/вложенные запуски — с etalons/bp-1347.bpt)
 
 CLI:
   python3 bpt_build.py make TREE.json OUT.bpt     # json-дерево -> .bpt
@@ -265,6 +269,80 @@ def terminate_others(title: str = 'Стоп: убить дубли') -> dict:
     return act('TerminateActivity', title,
                {'StateTitle': 'Workflow terminated', 'KillWorkflow': 'Y',
                 'TerminateType': 'allExceptCurrentByDocumentAndTemplate'})
+
+
+def terminate(title: str = 'Прерывание процесса') -> dict:
+    """Простой стоп (минимальная форма: только Title, без KillWorkflow)."""
+    return act('TerminateActivity', title, {})
+
+
+# ---------- документы и вложенные запуски (эталон bp-1347) ----------
+
+def create_document(fields: dict, title: str = 'Создание документа',
+                    doc_class: str = 'CreateDocumentActivity') -> dict:
+    """Создать документ/сущность (базовый класс = элемент смарт-процесса).
+    doc_class: CreateDocumentActivity | CreateCrmDealDocumentActivity
+    (сделка: CATEGORY_ID/STAGE_ID/CONTACT_ID) | CreateCrmContactDocumentActivity
+    (контакт; мульти-поля вложенной формой Fields['PHONE']={'PHONE': {'n1':
+    {'VALUE': ..., 'VALUE_TYPE': 'WORK'}}}). Привязки — с модификатором
+    '> id': '{=Document:CONTACT_ID > id}'. Списки — create_lists_document."""
+    return act(doc_class, title, {'Fields': dict(fields)})
+
+
+def create_lists_document(iblock_id, fields: dict, title: str = 'Элемент списка') -> dict:
+    """Элемент универсального списка: DocumentType обязателен, IBLOCK_ID
+    ставится сам (не дублируйте в fields)."""
+    f = {'IBLOCK_ID': str(iblock_id)}
+    f.update(fields)
+    return act('CreateListsDocumentActivity', title,
+               {'Fields': f,
+                'DocumentType': ['lists', 'BizprocDocument',
+                                 'iblock_%s' % iblock_id]})
+
+
+def start_workflow(template_id, document_id, parameters: dict | None = None,
+                   use_subscription: str = 'N',
+                   title: str = 'Запустить БП') -> dict:
+    """Запуск другого шаблона. document_id — выражение-ссылка на документ
+    цели; parameters: {имя: значение} — имена обязаны совпадать с
+    PARAMETERS целевого шаблона. ВНИМАНИЕ: TemplateId целятся по ID —
+    не пересоздавайте целевой шаблон (ссылки умирают молча)."""
+    props = {'DocumentId': document_id, 'TemplateId': str(template_id),
+             'UseSubscription': use_subscription,
+             'TemplateParameters': dict(parameters or {})}
+    return act('StartWorkflowActivity', title, props)
+
+
+def web_hook(handler: str, title: str = 'Исходящий вебхук') -> dict:
+    """POST на внешний URL; в Handler разрешены подстановки
+    {=Document:...} (параметры query из эталона)."""
+    return act('WebHookActivity', title, {'Handler': handler})
+
+
+def rest_activity(app_hash: str, message_text: str, files: list | None = None,
+                  auth_user: str = 'user_1', use_subscription: str = 'Y',
+                  timeout: str = '10', timeout_unit: str = 'm',
+                  status_message: str | None = None,
+                  title: str = 'REST-активность') -> dict:
+    """REST-активность приложения: Type = 'rest_' + 32-hex хэш регистрации.
+    Хэш и AuthUserId привязаны к конкретному порталу — при миграции
+    нужна перерегистрация приложения и сверка эталона."""
+    props = {'SetStatusMessage': 'Y',
+             'StatusMessage': status_message if status_message is not None else title,
+             'UseSubscription': use_subscription,
+             'TimeoutDuration': str(timeout), 'TimeoutDurationType': timeout_unit,
+             'messageText': message_text, 'files': list(files or []),
+             'AuthUserId': [auth_user]}
+    return act('rest_%s' % app_hash, title, props)
+
+
+def log_entry(text: str, set_variable: str = '0',
+              title: str = 'Запись в отчет') -> dict:
+    """Запись в отчет процесса — единственный способ увидеть состояние
+    на шаге (журнал UI активности по шагам не показывает). Text может
+    содержать выражения {=Name:Field} / {=Variable:...}."""
+    return act('LogActivity', title, {'Text': text,
+                                      'SetVariable': set_variable})
 
 
 def approve(users, name, description='', status_message='Approval in progress',

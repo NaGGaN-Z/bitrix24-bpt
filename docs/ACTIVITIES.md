@@ -26,7 +26,7 @@
   инстансы ЭТОГО шаблона для документа, кроме текущего (дедупликатор;
   держать первой активностью шаблона-диспетчера)
 - Минимальная форма: только `Title` («Прерывание процесса») — простой стоп
-- Билдер: `terminate_others(title)`
+- Билдеры: `terminate_others(title)` (дедупликатор), `terminate(title)` (стоп)
 
 ### EmptyBlockActivity — заглушка-маркер
 - Свойств почти нет (`Title`, `EditorComment`); Title вида
@@ -129,8 +129,10 @@
 - Билдер: `timeline_comment(text, users)`
 
 ### LogActivity — запись в журнал процесса
-- `Text`, `SetVariable` (устаревший класс)
-- Эквивалент современных шаблонов: `CrmTimelineCommentAdd`
+- `Text` (выражения разрешены), `SetVariable: '0'`
+- Единственный способ увидеть состояние на шаге (журнал UI
+  активности по шагам не показывает)
+- Билдер: `log_entry(text)`
 
 ### AbsenceActivity — график отсутствий
 - `AbsenceName`, `AbsenceDesrc` (опечатка-канон!), `AbsenceFrom`/`AbsenceTo`
@@ -197,19 +199,23 @@
 ## Документы и вложенные запуски
 
 ### CreateDocumentActivity — создать документ (базовый класс)
+- Билдер: `create_document(fields, doc_class=...)`
 - `Fields`: `{ПОЛЕ: значение|выражение}` — значения литералы или
   выражения; модификаторы вывода через ` > `:
   `{=Document:CONTACT_ID > id}`, `{=Document:TITLE > printable}`
 
 ### CreateCrmContactDocumentActivity — создать контакт
+- Билдер: `create_document(fields, doc_class='CreateCrmContactDocumentActivity')`
 - `Fields` — как у базового класса; множественные поля вложенной формой:
   `PHONE.PHONE.n1.{VALUE, VALUE_TYPE}`
 
 ### CreateCrmDealDocumentActivity — создать сделку
+- Билдер: `create_document(fields, doc_class='CreateCrmDealDocumentActivity')`
 - `Fields`: `CATEGORY_ID`, `STAGE_ID`, `CONTACT_ID` — выражения
   (для привязок — с модификатором `> id`)
 
 ### CreateListsDocumentActivity — элемент универсального списка
+- Билдер: `create_lists_document(iblock_id, fields)`
 - Дополнительно `DocumentType: ['lists']`; в `Fields` — `IBLOCK_ID`
   инфоблока и `NAME`
 
@@ -221,10 +227,12 @@
 - `TemplateParameters` — карта параметров шаблона-цели
   `{имя_параметра: значение}`; имена обязаны совпадать с объявленными
   в PARAMETERS целевого шаблона
+- Билдер: `start_workflow(template_id, document_id, parameters)`
 
 ### WebHookActivity — исходящий вебхук
 - `Handler` — URL внешнего обработчика (единственное значимое свойство)
 - Движок шлёт POST с данными документа; ответ не влияет на поток
+- Билдер: `web_hook(handler)`
 
 ### rest_<hash> — REST-активность приложения
 - `Type` = `rest_` + 32-hex идентификатор регистрации приложения
@@ -234,6 +242,7 @@
   `UseSubscription`, `TimeoutDuration`/`TimeoutDurationType`,
   `SetStatusMessage`/`StatusMessage` — подписка/таймаут/статус
 - Класс не переносим между порталами без перерегистрации приложения
+- Билдер: `rest_activity(app_hash, message_text, ...)`
 
 ## Enum-поля в CrmCreateDynamic (разгадка)
 
