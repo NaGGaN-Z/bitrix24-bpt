@@ -1,7 +1,7 @@
 # Классы активностей (справочник по эталонам)
 
-Формы сняты с реальных экспортов нового дизайнера (11 боевых шаблонов,
-26 классов). Порядок ключей `Properties` — канонический, байт-критичен.
+Формы сняты с реальных экспортов нового дизайнера (12 боевых шаблонов,
+33 класса). Порядок ключей `Properties` — канонический, байт-критичен.
 Числовидные значения — строки. Общие правила узла — `docs/FORMAT.md`.
 
 Билдер — функция `bpt_build.py`, собирающая класс (пусто = собирается
@@ -21,10 +21,11 @@
 - Билдер: `sequence(children, title)`
 
 ### TerminateActivity — терминация процесса
-- `StateTitle` (текст статуса), `KillWorkflow` `'Y'`,
+- Полная форма: `StateTitle` (текст статуса), `KillWorkflow` `'Y'`,
   `TerminateType`: `allExceptCurrentByDocumentAndTemplate` — убить все
   инстансы ЭТОГО шаблона для документа, кроме текущего (дедупликатор;
   держать первой активностью шаблона-диспетчера)
+- Минимальная форма: только `Title` («Прерывание процесса») — простой стоп
 - Билдер: `terminate_others(title)`
 
 ### EmptyBlockActivity — заглушка-маркер
@@ -61,6 +62,8 @@
   `mixedcondition: [{object, field, operator, value, joiner}]`, где
   `object` — `Name` активности (её результаты), `'Variable'`, `'Document'`;
   `joiner`: `'0'` первая строка, `'1'` = OR
+- Старая форма: `fieldcondition: [["ИМЯ_ПОЛЯ"]]` — условие по полю
+  документа без оператора (встречается в шаблонах старого дизайнера)
 - Билдеры: `if_else(branches)`, `if_else_mixed(branches)`
 
 ### WhileActivity — цикл с условием
@@ -190,6 +193,47 @@
   (копия из эталона + ключ `Document`)
 - Результаты — доп-результаты по имени активности: `{=Name:FIELD}`
 - Билдер: `get_dynamic_info(etid, return_fields, filter_rows, ...)`
+
+## Документы и вложенные запуски
+
+### CreateDocumentActivity — создать документ (базовый класс)
+- `Fields`: `{ПОЛЕ: значение|выражение}` — значения литералы или
+  выражения; модификаторы вывода через ` > `:
+  `{=Document:CONTACT_ID > id}`, `{=Document:TITLE > printable}`
+
+### CreateCrmContactDocumentActivity — создать контакт
+- `Fields` — как у базового класса; множественные поля вложенной формой:
+  `PHONE.PHONE.n1.{VALUE, VALUE_TYPE}`
+
+### CreateCrmDealDocumentActivity — создать сделку
+- `Fields`: `CATEGORY_ID`, `STAGE_ID`, `CONTACT_ID` — выражения
+  (для привязок — с модификатором `> id`)
+
+### CreateListsDocumentActivity — элемент универсального списка
+- Дополнительно `DocumentType: ['lists']`; в `Fields` — `IBLOCK_ID`
+  инфоблока и `NAME`
+
+### StartWorkflowActivity — запуск другого шаблона
+- `DocumentId` — выражение-ссылка на документ-цель
+  (напр. `{=Document:UF_CRM_7_PRKONT}`)
+- `TemplateId` — ID запускаемого шаблона (строка),
+  `UseSubscription` — `'Y'|'N'` (подписка на завершение)
+- `TemplateParameters` — карта параметров шаблона-цели
+  `{имя_параметра: значение}`; имена обязаны совпадать с объявленными
+  в PARAMETERS целевого шаблона
+
+### WebHookActivity — исходящий вебхук
+- `Handler` — URL внешнего обработчика (единственное значимое свойство)
+- Движок шлёт POST с данными документа; ответ не влияет на поток
+
+### rest_<hash> — REST-активность приложения
+- `Type` = `rest_` + 32-hex идентификатор регистрации приложения
+  (Маркетплейс / локальное REST-приложение) — у каждого портала свои хэши
+- `messageText` — текст/команда, интерпретируемая приложением;
+  `files` — вложения; `AuthUserId` — от чьего имени зовём;
+  `UseSubscription`, `TimeoutDuration`/`TimeoutDurationType`,
+  `SetStatusMessage`/`StatusMessage` — подписка/таймаут/статус
+- Класс не переносим между порталами без перерегистрации приложения
 
 ## Enum-поля в CrmCreateDynamic (разгадка)
 
