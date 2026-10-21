@@ -1,89 +1,112 @@
-# bpt — тулчейн шаблонов бизнес-процессов Битрикс24 (.bpt)
+# bpt — шаблоны бизнес-процессов Битрикс24 как код
 
 [![CI](https://github.com/NaGGAN-Z/bitrix24-bpt/actions/workflows/ci.yml/badge.svg)](https://github.com/NaGGAN-Z/bitrix24-bpt/actions/workflows/ci.yml)
 
-> Parse → build → validate → probe → diff: полный цикл работы с шаблонами БП
-> без дизайнера, zero-dep (чистый Python 3).
+Конструктор, инспектор и «хирург» для шаблонов бизнес-процессов
+Битрикс24 (файлы `.bpt`): описываете процесс скриптом на Python —
+получаете готовый файл — импортируете в портал. Или наоборот: выгружаете
+живые процессы с портала, разбираете, правите прицельно и возвращаете.
+Дизайнер мышкой не нужен.
 
-Три модуля: сериализация (`bpt_serialize.py`), REST-экспорт и дифф
-(`bpt_export.py`), генератор с гейтами (`bpt_build.py`); хирургия
-существующих шаблонов — `bpt_graft.py` (load → locate → edit → save с
-гейтами; правка живых .bpt — ТОЛЬКО через него). Канон форм
-активностей и грабли сборок — **`etalons.md`** (книга, рядом). Рантайм-уроки
-калькулятора выражений — скилл `bitrix24-bpt`
-(references/expression-runtime.md).
+Никаких зависимостей — чистый Python 3.10+.
 
-## Quick Start
+## Что умеет
+
+- **Собирать шаблоны кодом** — 37 конструкторов активностей (переменные,
+  условия, циклы, задачи, CRM-операции, генерация документов, REST).
+  Процесс версионируется в git, откат и ревью — как у обычного кода.
+- **Читать и выгружать чужие шаблоны** — любой `.bpt` с любого портала
+  разбирается в структуру; выгрузка всех процессов портала — одной
+  командой по вебхуку.
+- **Точечно править живые процессы** — не пересобирая весь шаблон:
+  найти блок по смыслу (тип/заголовок/формула), заменить формулу или
+  ветку, вставить блок в нужное место. Каждая правка — декларация
+  намерения; инструмент гарантирует, что изменилось ровно оно.
+- **Проверять до импорта** — висячие ссылки, необъявленные переменные,
+  опечатки в ключах, коварные формулы, побайтовая сверка с эталоном.
+- **Смотреть процессы целиком** — структурный diff двух версий,
+  интерактивная HTML-диаграмма в облике дизайнера (со свёрткой,
+  подсветкой изменений и ночной темой).
+- **Отлаживать на живом портале** — probe-режим: отладочная копия
+  шаблона с журналированием переменных + отчёт по таймлайну сущности.
+
+## Быстрый старт
 
 ```bash
-cd bpt
+git clone https://github.com/NaGGAN-Z/bitrix24-bpt.git
+cd bitrix24-bpt
 
-# инвариант корпуса: 12 эталонов обязаны быть byte-exact
-python3 bpt_serialize.py --all etalons        # 12/12
+# самопроверка: корпус эталонов собирается/разбирается без отличий
+python3 bpt_serialize.py --all etalons     # semantic-ok: 16/16
 
-# минимальный шаблон: json-дерево -> .bpt (через полный гейт validate)
-python3 bpt_build.py make TREE.json OUT.bpt
-
-# валидация дерева без записи (ERROR-рулы = exit 1)
-python3 bpt_build.py validate TREE.json [--portal=cloud|box@X.Y]
-
-# тесты (оба режима обязаны быть зелёными)
-python3 tests/test_bpt_build.py               # zero-dep жгут
-pytest tests/                                 # адаптер conftest.py
+# тесты (zero-dep жгуты и/или pytest)
+python3 tests/test_bpt_build.py            # --- 95/95 passed
+pytest tests/ -q                           # 227 passed
 ```
 
-## Возможности
+Минимальный шаблон:
 
-- **Byte-exact roundtrip** — `php_serialize`/`php_unserialize_exact`
-  (int-ключи не портятся), канонический JSON-шов, atomic save.
-- **Генератор DSL** — 37 конструкторов активностей: от `set_vars` до
-  CRM-классов date-filters-heavy (`task`, `create_deal`, `event_add`); детерминированные
-  имена, `clone`/`branch`/`fwd_ref` для рефакторинга деревьев.
-- **Гейты validate()** — висячие ссылки, undeclared-переменные, дубль-Name,
-  IfElse-кардинальность, JSON-шрамы; ERROR блокируют запись.
-- **FN-линт формул** — канон функций калькулятора (урок 4912): реестр
-  `bpt_funcs.py`, правила FN-01..10, профиль портала `--portal=`.
-- **Probe-режим** — дебаг-копия с журналированием переменных + отчёт по
-  таймлайну сущности (рантайм-проверка формул без дизайнера).
-- **Diff-режим** — структурный диф двух .bpt, иммунный к переименованию
-  Name; exit-контракт для CI.
-- **Диаграмма БП** — проекция дерева в шейпе дизайнера Б24: интерактивный
-  HTML одним файлом (свёртка, инспекция, дифф-отчёт, ночная тема) +
-  статика SVG/mermaid; покраска дельт и призраки удалённого по `--diff`.
+```python
+import bpt_build as B
 
-## Модули и CLI
+tree = B.scaffold(
+    children=[
+        B.set_vars({'done': 'Y'}),
+        B.if_else([
+            ('готово', ['flag', '=', '1'], [B.change_stage('DONE')]),
+            ('иначе', None, [B.im_notify(['user_1'], 'не готово')]),
+        ]),
+    ],
+    variables={'done': B.variable('done', 'int'),
+               'flag': B.variable('flag', 'int', default='0')},
+    doc_fields={'ID': 'int', 'TITLE': 'string'},
+)
+B.save(tree, 'out.bpt')   # гейты validate: ERROR блокируют запись
+```
 
-| Модуль | Роль | CLI |
-|---|---|---|
-| `bpt_serialize.py` | PHP-serialize/zlib/JSON-шов, roundtrip | `--all <dir>`, `--byte-exact`, per-file |
-| `bpt_export.py` | REST-выгрузка шаблонов (webhook, ретраи, чекпоинт), diff, probe-отчёт, диаграмма | `fetch`/`diff A.bpt B.bpt`/`probe <etype> <eid>`/`diagram X.bpt [--diff BASE]` |
-| `bpt_diagram.py` | проекция дерева (парс/краска/HTML-упаковка) + legacy D2/puml | вызывается через `bpt_export.py diagram`, напрямую — library-API |
-| `bpt_build.py` | DSL-генератор + validate-гейты + probe-копия | `make`/`check`/`probe`/`validate` (+`--portal=`) |
-| `bpt_graft.py` | хирургия существующих .bpt: locate-предикаты, edit-операции, гейты path-diff/form-lint/резолвер, byte-repro | `gates BASE.bpt PATCHED.bpt` |
+Импорт в портал: список шаблонов бизнес-процессов → «Импорт» → файл.
+Повторный импорт обновляет существующий шаблон, дубликатов нет.
 
-## Documentation
+Подробный разбор — [docs/getting-started.md](docs/getting-started.md).
 
-| Guide | О чём |
-|-------|-------|
+## Модули
+
+| Модуль | Что делает |
+|---|---|
+| `bpt_build.py` | Генератор: DSL-конструкторы + гейты `validate`/`check`/`probe` |
+| `bpt_graft.py` | Хирургия существующих `.bpt`: locate → edit → save с гейтами |
+| `bpt_export.py` | Выгрузка шаблонов с портала (webhook), `diff`, `probe`, `diagram` |
+| `bpt_serialize.py` | PHP-serialize/zlib, побайтовый roundtrip-инвариант |
+| `bpt_diagram.py` | Диаграммы: HTML-вьюер в облике дизайнера, SVG, mermaid |
+| `bpt_funcs.py` | Реестр функций калькулятора выражений (линтер FN-01..10) |
+
+## Документация
+
+| Гайд | О чём |
+|------|-------|
 | [Getting Started](docs/getting-started.md) | Установка, первый прогон, минимальное дерево |
-| [Builder DSL](docs/builder.md) | Полный инвентарь конструкторов (из кода), паттерны, миграция старых скриптов |
-| [Validate & FN-линт](docs/validate.md) | ERROR/WARN-рулы, FN-01..10, `--portal=`, корпус-инвариант |
-| [Probe-режим](docs/probe.md) | Runbook рантайм-прогона и чтения журнала |
-| [Graft](docs/graft.md) | Хирургия существующих .bpt: API, гейты, runbook патча, дебаг-копия как деплой-дисциплина |
-| [Diagram](docs/diagram.md) | Проекция дерева в шейпе дизайнера: HTML-обёртка, краска дельт, призраки, вьюер, грабли |
-| `etalons.md` | Книга форм: контейнер, активности, каноны, грабли |
+| [Builder DSL](docs/builder.md) | Все конструкторы, паттерны, миграция старых скриптов |
+| [Validate & FN-линт](docs/validate.md) | Правила ERROR/WARN, FN-01..10, корпус-инвариант |
+| [Probe-режим](docs/probe.md) | Рантайм-прогон на отладочной копии, чтение журнала |
+| [Graft](docs/graft.md) | Хирургия живых `.bpt`: API, гейты, runbook патча |
+| [Diagram](docs/diagram.md) | HTML-вьюер, подсветка дельт, призраки удалённого |
 
-## Гейты качества
+## Качество
 
-- `python3 bpt_serialize.py --all etalons` — **N/N byte-exact** (N =
-  размер корпуса, не хардкодится).
-- Тесты — 150+ чеков в 5 жгутах, zero-dep (`python3 tests/test_*.py`) и
-  pytest-адаптер (`pytest tests/`, контракт двойного запуска в
-  `tests/conftest.py`).
-- Регресс-база booking-chain (`tests/cases_booking_chain/`): 4 перехода живой цепочки —
-  байт-в-байт канонам (`tests/test_bpt_graft.py`).
-- `ruff check .` — чисто (селект в `ruff.toml`).
-- `python3 tests/test_repo_lint.py` — WARN на сырую хирургию
-  (`zlib.compress` вне канонных модулей; правки .bpt — только graft).
-- `validate` на эталонах: 0 ERROR (кроме 2 известных висячков
-  notify-history-canonical — детектор обязан их ловить).
+- Эталонный корпус (16 шаблонов) + регресс-база живой цепочки версий —
+  roundtrip побайтово, гоняется на каждом CI-прогоне.
+- 227 автотестов: zero-dep жгуты (прямой `python3`) и pytest — один
+  код, оба режима.
+- CI: ruff + все жгуты + pytest на Python 3.10 и 3.12.
+- Линт репозитория: правки `.bpt`-хирургией вне канона запрещены.
+
+## ИИ-агентам
+
+Документация написана так, чтобы агент (Claude, GPT и др.) мог собрать
+шаблон по описанию задачи естественным языком: начните с
+[Builder DSL](docs/builder.md) и [Validate](docs/validate.md),
+затем опишите процесс агенту — он вернёт готовый `.bpt`.
+
+## Лицензия
+
+MIT — см. [LICENSE](LICENSE).
