@@ -146,7 +146,7 @@ gt.locate_all(kind=…, title=…, sv_keys=…, pred=…, name=…, expect=N)
 
 Availability-модель одним проходом: `{=Variable:X}` ⊆ VARIABLES и
 `{=Parameter:X}` ⊆ PARAMETERS — STRICT (исторические undeclared v11/v12
-`pf_hst`/`pf_gross` ловятся, TODO №7); `{=Act:Field}` — имя активности
+`pf_hst`/`pf_gross` ловятся); `{=Act:Field}` — имя активности
 + для активностей чтения поле ∈ манифест ∪ ReturnFields ∪ `UF_*` (ID —
 строго манифест); `{=Document:X}`/`{=Constant:X}` — вне модели
 (манифесты экспортов недозаполнены: живые ссылки вне секций —

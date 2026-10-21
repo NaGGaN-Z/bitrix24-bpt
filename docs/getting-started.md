@@ -58,13 +58,13 @@ python3 bpt_build.py validate tree.json --portal=box@22.100
 # exit: 0 чисто / 1 ERROR / 2 usage; WARN не меняют exit
 ```
 
-`--portal=` включает FN-03 (since-версии функций урока 4912 против
+`--portal=` включает FN-03 (since-версии функций против
 версии коробки; cloud-дефолт = без проверок) —
 см. [Validate & FN-линт](validate.md).
 
 ## Дальше
 
-- Формы активностей и каноны — `etalons.md` (книга, в корне репо).
+- Правила сборки и FN-линт — [validate.md](validate.md).
 - Рантайм формул: [Probe-режим](probe.md).
 - REST-выгрузка шаблонов с портала: `python3 bpt_export.py fetch`
   (env `B24_WEBHOOK`; argv-URL светится в `ps` — используйте env).
