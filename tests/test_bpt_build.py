@@ -490,8 +490,10 @@ def fwd_ref_helper():
         name='NamedTarget')
     t = bpt_build.scaffold([bpt_build.sequence([src, tgt])], {},
                            {'ID': 'string'})
-    bpt_build.save(t, '/tmp/opencode/fwd.bpt')
-    back = bpt_build.load('/tmp/opencode/fwd.bpt')
+    tmpdir = tempfile.mkdtemp(prefix='bpt_fwd_')
+    fwd_path = os.path.join(tmpdir, 'fwd.bpt')
+    bpt_build.save(t, fwd_path)
+    back = bpt_build.load(fwd_path)
     assert '{=NamedTarget:RESULT_ONE}' in str(back)
 
 
