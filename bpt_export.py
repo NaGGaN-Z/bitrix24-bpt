@@ -25,7 +25,8 @@ Output:
     out_dir/templates.json      — raw list (все страницы; чекпоинт пишется
                                   после КАЖДОЙ страницы — обрыв не теряет
                                   выкачанное)
-    out_dir/NNN_Name.bpt        — raw zlib blob, if TEMPLATE_DATA returned
+    out_dir/NNN_Name.bpt        — канон-контейнер, собранный из select[]=TEMPLATE
+                                  (REST отдаёт дерево развёрнутым; template.get НЕТ)
     out_dir/NNN_Name.json       — decoded template tree (unserialized -> JSON)
     out_dir/summary.md          — inventory: template -> activity types, vars, params
 Пагинация курсорная (filter >ID): мутации между страницами не сдвигают окно;
@@ -173,7 +174,11 @@ def fetch_all(wh: str, out_dir: str, page_size: int = 50) -> list:
     ckpt = os.path.join(out_dir, 'templates.json')
     while True:
         resp = call_retry(wh, 'bizproc.workflow.template.list',
-                          {'select': ['*', 'TEMPLATE_DATA'],
+                          {'select': ['ID', 'NAME', 'MODULE_ID', 'ENTITY',
+                                      'DOCUMENT_TYPE', 'AUTO_EXECUTE',
+                                      'ACTIVE', 'MODIFIED', 'TEMPLATE',
+                                      'PARAMETERS', 'VARIABLES',
+                                      'CONSTANTS'],
                            'order': {'ID': 'ASC'},
                            'filter': {'>ID': last_id}})
         page = resp.get('result') or []
@@ -1051,31 +1056,41 @@ def main():
         entry = {'ID': tid, 'NAME': name, 'MODULE_ID': t.get('MODULE_ID'),
                  'ENTITY': t.get('ENTITY'), 'DOCUMENT_TYPE': t.get('DOCUMENT_TYPE'),
                  'AUTO_EXECUTE': t.get('AUTO_EXECUTE')}
-        td = t.get('TEMPLATE_DATA')
-        if isinstance(td, dict):
-            td = td.get('b64') or td.get('content')
-        if isinstance(td, list) and len(td) >= 2:
-            td = td[1]
+        td = t.get('TEMPLATE')
+        if isinstance(td, list) and td and isinstance(td[0], dict):
+            td = td  # канон: список корневых активностей
+        elif isinstance(td, dict):
+            td = [td]  # бывает и одинокий корень-словарь
         if td:
             try:
-                blob = b64_to_zlib(td)
+                # канон-контейнер .bpt из полей list-ответа: REST отдаёт
+                # дерево уже развёрнутым (select[]=TEMPLATE; метода
+                # template.get нет) — собираем наш канон, а не блоб портала
+                from bpt_serialize import (compress_bpt,
+                                           php_serialize)
+                tree = {'TEMPLATE': td,
+                        'PARAMETERS': t.get('PARAMETERS') or {},
+                        'VARIABLES': t.get('VARIABLES') or {},
+                        'CONSTANTS': t.get('CONSTANTS') or {}}
+                uns = php_serialize(tree)
+                blob = compress_bpt(uns, 9)
                 stem = _template_stem(tid, safe)
                 open(os.path.join(out_dir, stem + '.bpt'), 'wb').write(blob)
                 open(os.path.join(out_dir, stem + '.json'), 'w',
-                     encoding='utf-8').write(dump_template_json(blob))
-                tree = php_unserialize(blob)  # lossy — только для summary
+                     encoding='utf-8').write(dump_template_json(uns))
                 acts = []
-                for root in (tree.get('TEMPLATE') or []):
+                for root in tree['TEMPLATE']:
                     walk_activities(root, acts)
                 entry['activities'] = sorted({a['Type'] for a in acts})
                 entry['vars'] = sorted((tree.get('VARIABLES') or {}).keys())
-                entry['params'] = sorted((tree.get('PARAMETERS') or {}).keys())
+                entry['params'] = sorted(
+                    (tree.get('PARAMETERS') or {}).keys())
                 entry['decoded'] = True
             except Exception as e:
                 entry['decoded'] = False
                 entry['error'] = str(e)
         else:
-            entry['decoded'] = None  # no TEMPLATE_DATA in list response
+            entry['decoded'] = None  # TEMPLATE пуст в ответе list
         summary.append(entry)
 
     lines = ['# BP templates inventory', '']
@@ -1088,7 +1103,7 @@ def main():
             if e.get('vars'):
                 lines.append(f"- vars: {', '.join(e['vars'])}")
         elif e.get('decoded') is None:
-            lines.append('- (TEMPLATE_DATA не вернулся из list — нужен UI-экспорт)')
+            lines.append('- (TEMPLATE пуст в ответе list)')
         else:
             lines.append(f"- DECODE ERROR: {e.get('error')}")
         lines.append('')
