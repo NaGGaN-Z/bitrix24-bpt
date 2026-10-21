@@ -98,6 +98,7 @@ B.save(tree, 'out.bpt')   # гейты validate: ERROR блокируют зап
 | [Probe-режим](docs/probe.md) | Рантайм-прогон на отладочной копии, чтение журнала |
 | [Graft](docs/graft.md) | Хирургия живых `.bpt`: API, гейты, runbook патча |
 | [Diagram](docs/diagram.md) | HTML-вьюер, подсветка дельт, призраки удалённого |
+| [etalons.md](etalons.md) | Книга форм: контейнер .bpt, активности, каноны, грабли |
 
 ## Качество
 

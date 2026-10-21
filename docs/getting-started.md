@@ -64,7 +64,7 @@ python3 bpt_build.py validate tree.json --portal=box@22.100
 
 ## Дальше
 
-- Правила сборки и FN-линт — [validate.md](validate.md).
+- Формы активностей и каноны — [etalons.md](etalons.md) (книга, в корне репо).
 - Рантайм формул: [Probe-режим](probe.md).
 - REST-выгрузка шаблонов с портала: `python3 bpt_export.py fetch`
   (env `B24_WEBHOOK`; argv-URL светится в `ps` — используйте env).
