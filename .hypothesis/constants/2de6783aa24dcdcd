@@ -1,4 +1,0 @@
-# file: /tmp/opencode/bitrix24-bpt/bpt_serialize.py
-# hypothesis_version: 6.168.3
-
-[b'";', b'1', b'N', b'N;', b'O:', b'R:', b'a', b'a:', b'a:%d:{', b'a:(\\d+):\\{', b'b', b'b:', b'b:([01]);', b'b:0;', b'b:1;', b'd', b'd:', b'd:(-?[\\d.eE+\\-]+);', b'i', b'i:', b'i:(-?\\d+);', b'r:', b's', b's:', b's:%d:"', b's:(\\d+):"', b'}', 1000000000000000.0, 1024, '+', '-', '--all', '--byte-exact', '-0', '-inf', '.', '.0', '.bpt', 'BYTE-EXACT', 'E', 'MISMATCH', '^-?\\d+$', '__main__', 'e', 'inf', 'rb', 'roundtrip', 'semantic-ok', 'utf-8']
