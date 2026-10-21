@@ -1,0 +1,54 @@
+{
+ "_source": "live probe run 2026-10-02, portal portal-b, SPA 1068 item 4 (dev); sanitized: IDs/тексты как есть, лишние поля срезаны; total/next — top-level по доке",
+ "total": 8,
+ "result": [
+  {
+   "ID": "1778",
+   "CREATED": "2026-10-02T12:43:29+03:00",
+   "AUTHOR_ID": "54",
+   "COMMENT": "[DBG] channel test via REST"
+  },
+  {
+   "ID": "1780",
+   "CREATED": "2026-10-02T12:45:40+03:00",
+   "AUTHOR_ID": "54",
+   "COMMENT": "[probe] after SetVar_103\nV_DL="
+  },
+  {
+   "ID": "1782",
+   "CREATED": "2026-10-02T12:45:40+03:00",
+   "AUTHOR_ID": "54",
+   "COMMENT": "[probe] after SetVar_103\nV_DL="
+  },
+  {
+   "ID": "1788",
+   "CREATED": "2026-10-02T12:46:44+03:00",
+   "AUTHOR_ID": "54",
+   "COMMENT": "[probe] after SetVar_103\nV_DL="
+  },
+  {
+   "ID": "1790",
+   "CREATED": "2026-10-02T12:46:44+03:00",
+   "AUTHOR_ID": "54",
+   "COMMENT": "[probe] after SetVar_103\nV_DL="
+  },
+  {
+   "ID": "1798",
+   "CREATED": "2026-10-02T12:47:23+03:00",
+   "AUTHOR_ID": "54",
+   "COMMENT": "[probe] after SetVar_103\nV_DL="
+  },
+  {
+   "ID": "1800",
+   "CREATED": "2026-10-02T12:47:23+03:00",
+   "AUTHOR_ID": "54",
+   "COMMENT": "[probe] after SetVar_103\nV_DL="
+  },
+  {
+   "ID": "1802",
+   "CREATED": "2026-10-02T12:47:23+03:00",
+   "AUTHOR_ID": "54",
+   "COMMENT": "[probe] after SetVar_99\nV_M_FULL={{='ex_' . 4 . '_full'}}"
+  }
+ ]
+}

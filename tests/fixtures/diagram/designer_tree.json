@@ -1,0 +1,97 @@
+{
+  "root": {
+    "name": "Template",
+    "type": "SequentialWorkflowActivity",
+    "title": "Template",
+    "children": [
+      {
+        "name": "n_start",
+        "type": "SetVariableActivity",
+        "title": "Подготовка суммы",
+        "children": []
+      },
+      {
+        "name": "n_if",
+        "type": "IfElseActivity",
+        "title": "Цель из лида?",
+        "children": [
+          {
+            "name": "n_br_yes",
+            "type": "IfElseBranchActivity",
+            "title": "Да",
+            "subtitle": "поля: Сумма",
+            "children": [
+              {
+                "name": "n_mail",
+                "type": "SendEmailActivity",
+                "title": "Письмо менеджеру <важно> & срочно",
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "n_br_no",
+            "type": "IfElseBranchActivity",
+            "title": "Нет",
+            "subtitle": "всегда",
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "n_while",
+        "type": "WhileActivity",
+        "title": "Пока есть складки",
+        "children": [
+          {
+            "name": "n_body",
+            "type": "UpdateDynamicActivity",
+            "title": "Списать со складки и выйти",
+            "children": []
+          }
+        ]
+      },
+      {
+        "ghost": true,
+        "name": "n_gone",
+        "title": "Удалённая проверка",
+        "count": 3,
+        "children": []
+      },
+      {
+        "name": "n_term",
+        "type": "TerminateActivity",
+        "title": "Финиш",
+        "children": []
+      }
+    ]
+  },
+  "templateData": {
+    "parameters": [
+      {
+        "name": "doc_id",
+        "title": "ID документа",
+        "type": "int",
+        "required": true,
+        "default": "7"
+      }
+    ],
+    "variables": [
+      {
+        "name": "sum",
+        "title": "Сумма",
+        "type": "double",
+        "required": false
+      }
+    ],
+    "constants": [
+      {
+        "name": "VAT",
+        "title": "НДС",
+        "type": "string",
+        "required": false,
+        "default": "20%"
+      }
+    ]
+  }
+}

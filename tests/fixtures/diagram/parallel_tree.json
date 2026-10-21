@@ -1,0 +1,53 @@
+{
+  "root": {
+    "name": "Template",
+    "type": "SequentialWorkflowActivity",
+    "title": "Template",
+    "children": [
+      {
+        "name": "par1",
+        "type": "ParallelActivity",
+        "title": "Параллельный блок",
+        "children": [
+          {
+            "name": "p_br1",
+            "type": "IfElseBranchActivity",
+            "title": "Ветка 1",
+            "children": [
+              {
+                "name": "p_a",
+                "type": "SetVariableActivity",
+                "title": "Атом 1",
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "p_br2",
+            "type": "IfElseBranchActivity",
+            "title": "Ветка 2",
+            "children": []
+          },
+          {
+            "name": "p_br3",
+            "type": "IfElseBranchActivity",
+            "title": "Ветка 3",
+            "children": [
+              {
+                "name": "p_b",
+                "type": "SetVariableActivity",
+                "title": "Атом 3",
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "templateData": {
+    "parameters": [],
+    "variables": [],
+    "constants": []
+  }
+}

@@ -1,153 +1,89 @@
-# bpt — тулчейн шаблонов бизнес-процессов Битрикс24 (.bpt as code)
+# bpt — тулчейн шаблонов бизнес-процессов Битрикс24 (.bpt)
 
-Генерация, разбор и верификация шаблонов бизнес-процессов Битрикс24
-**кодом, без визуального дизайнера**. Python 3.10+, зависимостей нет.
+[![CI](https://github.com/NaGGAN-Z/bitrix24-bpt/actions/workflows/ci.yml/badge.svg)](https://github.com/NaGGAN-Z/bitrix24-bpt/actions/workflows/ci.yml)
 
-Три инструмента:
+> Parse → build → validate → probe → diff: полный цикл работы с шаблонами БП
+> без дизайнера, zero-dep (чистый Python 3).
 
-| Файл | Роль |
-|---|---|
-| `bpt_export.py` | REST-выгрузка всех шаблонов портала (`bizproc.workflow.template.list`) + парсер .bpt → инвентарь активностей (JSON + summary) |
-| `bpt_serialize.py` | Byte-exact PHP-serialize writer для .bpt; CLI roundtrip-тест (`roundtrip`, `--all`) |
-| `bpt_build.py` | Конструктор шаблонов: 30+ билдеров активностей, каркас, CLI `make/check` |
+Три модуля: сериализация (`bpt_serialize.py`), REST-экспорт и дифф
+(`bpt_export.py`), генератор с гейтами (`bpt_build.py`); хирургия
+существующих шаблонов — `bpt_graft.py` (load → locate → edit → save с
+гейтами; правка живых .bpt — ТОЛЬКО через него). Канон форм
+активностей и грабли сборок — **`etalons.md`** (книга, рядом). Рантайм-уроки
+калькулятора выражений — скилл `bitrix24-bpt`
+(references/expression-runtime.md).
 
-Документация:
-
-- `docs/FORMAT.md` — формат контейнера `zlib(PHP-serialize)`, правила
-  сериализации, байт-точность
-- `docs/ACTIVITIES.md` — справочник 33 классов активностей
-  нового дизайнера: канонические формы Properties, дети, гочи, билдеры
-
-## Быстрый старт
-
-```python
-import bpt_build as bb
-
-tree = bb.scaffold(
-    children=[
-        bb.terminate_others(),                      # дедупликатор инстансов
-        bb.if_else([
-            ('Согласовано', ['status', '=', 'DONE'], [
-                bb.update_dynamic(1040, {'PRICE': '{{=Document:PRICE}}'},
-                                  filter_conditions=[('ID', '{=Document:SVC_ID}')]),
-                bb.change_stage('NEW_STAGE'),
-            ]),
-            ('Иначе', None, [                        # else-ветка
-                bb.im_notify(['{=Document:ASSIGNED_BY_ID}'], 'Вернулось'),
-            ]),
-        ]),
-    ],
-    variables={'status': bb.variable('status', 'string', 'Статус')},
-    doc_fields={...},                                # из эталонного экспорта
-)
-bb.save(tree, 'dispatcher.bpt')                      # самопроверка inside
-```
-
-CLI:
+## Quick Start
 
 ```bash
-python3 bpt_build.py make tree.json out.bpt   # json-дерево -> .bpt
-python3 bpt_build.py check out.bpt tree.json  # roundtrip-проверка
-python3 bpt_serialize.py --all dir/           # гейт: все .bpt byte-exact
-python3 bpt_export.py WEBHOOK_URL out_dir/    # инвентарь портала
+cd bpt
+
+# инвариант корпуса: 12 эталонов обязаны быть byte-exact
+python3 bpt_serialize.py --all etalons        # 12/12
+
+# минимальный шаблон: json-дерево -> .bpt (через полный гейт validate)
+python3 bpt_build.py make TREE.json OUT.bpt
+
+# валидация дерева без записи (ERROR-рулы = exit 1)
+python3 bpt_build.py validate TREE.json [--portal=cloud|box@X.Y]
+
+# тесты (оба режима обязаны быть зелёными)
+python3 tests/test_bpt_build.py               # zero-dep жгут
+pytest tests/                                 # адаптер conftest.py
 ```
 
-## Деплой на портал
+## Возможности
 
-Два варианта, у каждого своя ниша.
+- **Byte-exact roundtrip** — `php_serialize`/`php_unserialize_exact`
+  (int-ключи не портятся), канонический JSON-шов, atomic save.
+- **Генератор DSL** — 37 конструкторов активностей: от `set_vars` до
+  CRM-классов date-filters-heavy (`task`, `create_deal`, `event_add`); детерминированные
+  имена, `clone`/`branch`/`fwd_ref` для рефакторинга деревьев.
+- **Гейты validate()** — висячие ссылки, undeclared-переменные, дубль-Name,
+  IfElse-кардинальность, JSON-шрамы; ERROR блокируют запись.
+- **FN-линт формул** — канон функций калькулятора (урок 4912): реестр
+  `bpt_funcs.py`, правила FN-01..10, профиль портала `--portal=`.
+- **Probe-режим** — дебаг-копия с журналированием переменных + отчёт по
+  таймлайну сущности (рантайм-проверка формул без дизайнера).
+- **Diff-режим** — структурный диф двух .bpt, иммунный к переименованию
+  Name; exit-контракт для CI.
+- **Диаграмма БП** — проекция дерева в шейпе дизайнера Б24: интерактивный
+  HTML одним файлом (свёртка, инспекция, дифф-отчёт, ночная тема) +
+  статика SVG/mermaid; покраска дельт и призраки удалённого по `--diff`.
 
-### Вариант 1 — ручной: импорт .bpt через UI
+## Модули и CLI
 
-В списке шаблонов бизнес-процессов нужного типа документа — «Импорт»,
-выбираете файл. Повторный импорт шаблона с тем же именем = upsert.
+| Модуль | Роль | CLI |
+|---|---|---|
+| `bpt_serialize.py` | PHP-serialize/zlib/JSON-шов, roundtrip | `--all <dir>`, `--byte-exact`, per-file |
+| `bpt_export.py` | REST-выгрузка шаблонов (webhook, ретраи, чекпоинт), diff, probe-отчёт, диаграмма | `fetch`/`diff A.bpt B.bpt`/`probe <etype> <eid>`/`diagram X.bpt [--diff BASE]` |
+| `bpt_diagram.py` | проекция дерева (парс/краска/HTML-упаковка) + legacy D2/puml | вызывается через `bpt_export.py diagram`, напрямую — library-API |
+| `bpt_build.py` | DSL-генератор + validate-гейты + probe-копия | `make`/`check`/`probe`/`validate` (+`--portal=`) |
+| `bpt_graft.py` | хирургия существующих .bpt: locate-предикаты, edit-операции, гейты path-diff/form-lint/резолвер, byte-repro | `gates BASE.bpt PATCHED.bpt` |
 
-- работает на любом портале, ничего не разворачивая;
-- шаблон не привязан к приложению — управляется из UI свободно;
-- минус: ручной шаг.
+## Documentation
 
-### Вариант 2 — REST: `bizproc.workflow.template.add`
+| Guide | О чём |
+|-------|-------|
+| [Getting Started](docs/getting-started.md) | Установка, первый прогон, минимальное дерево |
+| [Builder DSL](docs/builder.md) | Полный инвентарь конструкторов (из кода), паттерны, миграция старых скриптов |
+| [Validate & FN-линт](docs/validate.md) | ERROR/WARN-рулы, FN-01..10, `--portal=`, корпус-инвариант |
+| [Probe-режим](docs/probe.md) | Runbook рантайм-прогона и чтения журнала |
+| [Graft](docs/graft.md) | Хирургия существующих .bpt: API, гейты, runbook патча, дебаг-копия как деплой-дисциплина |
+| [Diagram](docs/diagram.md) | Проекция дерева в шейпе дизайнера: HTML-обёртка, краска дельт, призраки, вьюер, грабли |
+| `etalons.md` | Книга форм: контейнер, активности, каноны, грабли |
 
-Метод принимает наш файл напрямую:
+## Гейты качества
 
-```json
-{
-  "DOCUMENT_TYPE": ["crm", "CCrmDocumentDeal", "DEAL"],
-  "NAME": "Диспетчер",
-  "AUTO_EXECUTE": 1,
-  "TEMPLATE_DATA": ["dispatcher.bpt", "<base64 содержимого .bpt>"]
-}
-```
-
-- работает **только из контекста приложения** (локальное/публичное
-  REST-приложение с oauth-токеном, scope `bizproc`); с входящего вебхука —
-  `ACCESS_DENIED: Application context required`;
-- `DOCUMENT_TYPE` — тройка строк: сделки `["crm","CCrmDocumentDeal","DEAL"]`,
-  смарт-процессы `["crm","Bitrix\\Crm\\Integration\\BizProc\\Document\\Dynamic","DYNAMIC_<etid>"]`,
-  списки `["lists","Bitrix\\Lists\\BizprocDocumentLists","iblock_<id>"]` и т.п.;
-- `AUTO_EXECUTE`: 0 — нет, 1 — при создании, 2 — при изменении,
-  3 — при создании и изменении;
-- шаблон **привязывается к приложению**: последующие
-  `template.update` / `template.delete` — только из контекста того же
-  приложения; вебхук и UI-импорт его не перезапишут;
-- запуск процесса `bizproc.workflow.start` работает и с вебхука.
-
-Что выбрать: разовая работа с клиентским порталом без приложения —
-вариант 1; свой контур с приложением и повторяемые деплои — вариант 2.
-
-## Грабли деплоя и диагностика (проверено боем)
-
-- `bizproc.workflow.template.list` c `TEMPLATE_DATA` данные не отдаёт
-  (по крайней мере на части сборок) — эталоны снимайте UI-экспортом;
-  `bpt_export.py` корректно отработает и без TEMPLATE_DATA.
-- Не пересоздавайте (delete + create) шаблоны, на которые ссылаются
-  `StartWorkflowActivity` других шаблонов — они целятся по **ID шаблона**,
-  ID после пересоздания меняется, ссылки умирают молча.
-- `AUTO_EXECUTE=2` (на изменение) срабатывает только при РЕАЛЬНОМ
-  изменении данных; `crm.item.update` с тем же значением событие не
-  триггерит.
-- Запуск по REST: `bizproc.workflow.start`, DOCUMENT_ID для смарт-процесса —
-  `['crm', 'Bitrix\\Crm\\Integration\\BizProc\\Document\\Dynamic',
-  'DYNAMIC_<etid>_<item_id>']` (третий элемент — склейка через `_`).
-- `bizproc.workflow.instances` может возвращать 0 при живых процессах —
-  не доверять, смотреть журнал в UI.
-- Цикл «конфиг-как-код»: после ручной правки шаблона в дизайнере —
-  UI-экспорт → коммит .bpt в репо, иначе репо врёт.
-
-### Диагностика шаблона (когда «не работает»)
-
-1. Журнал UI не показывает активити по шагам — детали только через
-   `LogActivity` («Запись в отчет»), добавленный в шаблон.
-2. Эхо переменных: писать `DBG s=[{=Variable:S}]` в неиспользуемое
-   текстовое поле создаваемого элемента — видно всё состояние.
-3. Маркер-пробы: каждое правило пишет свой тег в поле цели → после
-   прогона списком видно, кто кого реально сматчил.
-
-## Гейт качества
-
-Все `.bpt` проекта обязаны проходить byte-exact roundtrip:
-
-```bash
-python3 bpt_serialize.py --all . && echo OK
-```
-
-`semantic-ok` — минимально допустимый статус, `BYTE-EXACT` — цель.
-Первый расходящийся байт печатается с контекстом.
-
-## Эталоны
-
-Формы активностей сняты с реальных экспортов; сами эталонные `.bpt`
-в репозиторий не входят (`etalons/` в `.gitignore`): это шаблоны
-конкретных порталов. Для нового портала снимите свои эталоны:
-UI-экспорт любого шаблона → `bpt_serialize.py roundtrip` →
-используйте как источник канонических форм.
-
-## Возможные применения
-
-- массовые миграции шаблонов между порталами;
-- reverse-engineering и аудит чужих БП (инвентарь активностей);
-- сложные маршрутизаторы/каскады (циклы по элементам СП,
-  переменно-управляемое ветвление), которые мучительно кликать руками;
-- шаблоны в git: диффы, ревью, откат;
-- генерация процессов ИИ-агентами: документация самодостаточна, агент
-  (Claude, GPT и т.п.) собирает валидный .bpt по словесному описанию
-  задачи — без открытия дизайнера.
+- `python3 bpt_serialize.py --all etalons` — **N/N byte-exact** (N =
+  размер корпуса, не хардкодится).
+- Тесты — 150+ чеков в 5 жгутах, zero-dep (`python3 tests/test_*.py`) и
+  pytest-адаптер (`pytest tests/`, контракт двойного запуска в
+  `tests/conftest.py`).
+- Регресс-база booking-chain (`tests/cases_booking_chain/`): 4 перехода живой цепочки —
+  байт-в-байт канонам (`tests/test_bpt_graft.py`).
+- `ruff check .` — чисто (селект в `ruff.toml`).
+- `python3 tests/test_repo_lint.py` — WARN на сырую хирургию
+  (`zlib.compress` вне канонных модулей; правки .bpt — только graft).
+- `validate` на эталонах: 0 ERROR (кроме 2 известных висячков
+  notify-history-canonical — детектор обязан их ловить).

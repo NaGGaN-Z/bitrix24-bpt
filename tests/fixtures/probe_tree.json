@@ -1,0 +1,179 @@
+{
+ "VERSION": 2,
+ "TEMPLATE": [
+  {
+   "Type": "SequentialWorkflowActivity",
+   "Name": "Template",
+   "Activated": "Y",
+   "Node": null,
+   "Properties": {},
+   "Children": [
+    {
+     "Type": "SetVariableActivity",
+     "Name": "SetVar_0",
+     "Activated": "Y",
+     "Node": null,
+     "Properties": {
+      "VariableValue": {
+       "V_AMOUNT": "0"
+      },
+      "Title": "Инициализация",
+      "EditorComment": ""
+     },
+     "Children": []
+    },
+    {
+     "Type": "IfElseActivity",
+     "Name": "Branch_5",
+     "Activated": "Y",
+     "Node": null,
+     "Properties": {
+      "Title": "Условие",
+      "EditorComment": ""
+     },
+     "Children": [
+      {
+       "Type": "IfElseBranchActivity",
+       "Name": "Act_3",
+       "Activated": "Y",
+       "Node": null,
+       "Properties": {
+        "Title": "Да",
+        "EditorComment": "",
+        "propertyvariablecondition": [
+         [
+          "V_FLAG",
+          "=",
+          "Y",
+          "0",
+          "0"
+         ]
+        ]
+       },
+       "Children": [
+        {
+         "Type": "SetVariableActivity",
+         "Name": "SetVar_1",
+         "Activated": "Y",
+         "Node": null,
+         "Properties": {
+          "VariableValue": {
+           "V_COUNT": "1"
+          },
+          "Title": "Счётчик ветки",
+          "EditorComment": ""
+         },
+         "Children": []
+        }
+       ]
+      },
+      {
+       "Type": "IfElseBranchActivity",
+       "Name": "Act_4",
+       "Activated": "Y",
+       "Node": null,
+       "Properties": {
+        "Title": "Нет",
+        "EditorComment": "",
+        "truecondition": "1"
+       },
+       "Children": [
+        {
+         "Type": "SetVariableActivity",
+         "Name": "SetVar_2",
+         "Activated": "Y",
+         "Node": null,
+         "Properties": {
+          "VariableValue": {
+           "V_FLAG": "N"
+          },
+          "Title": "Флаг ветки",
+          "EditorComment": ""
+         },
+         "Children": []
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "Type": "WhileActivity",
+     "Name": "Loop_8",
+     "Activated": "Y",
+     "Node": null,
+     "Properties": {
+      "propertyvariablecondition": [
+       [
+        "V_FLAG",
+        "=",
+        "Y",
+        "0"
+       ]
+      ],
+      "Title": "Цикл",
+      "EditorComment": ""
+     },
+     "Children": [
+      {
+       "Type": "SequenceActivity",
+       "Name": "Act_7",
+       "Activated": "Y",
+       "Node": null,
+       "Properties": {
+        "Title": "Sequence of actions"
+       },
+       "Children": [
+        {
+         "Type": "SetVariableActivity",
+         "Name": "SetVar_6",
+         "Activated": "Y",
+         "Node": null,
+         "Properties": {
+          "VariableValue": {
+           "V_COUNT": "{{={=Variable:V_COUNT}+1}}"
+          },
+          "Title": "Счётчик итерации",
+          "EditorComment": ""
+         },
+         "Children": []
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "PARAMETERS": [],
+ "VARIABLES": {
+  "V_AMOUNT": {
+   "Name": "V_AMOUNT",
+   "Description": "",
+   "Type": "double",
+   "Required": "0",
+   "Multiple": "0",
+   "Options": "",
+   "Default": ""
+  },
+  "V_COUNT": {
+   "Name": "V_COUNT",
+   "Description": "",
+   "Type": "int",
+   "Required": "0",
+   "Multiple": "0",
+   "Options": "",
+   "Default": ""
+  },
+  "V_FLAG": {
+   "Name": "V_FLAG",
+   "Description": "",
+   "Type": "string",
+   "Required": "0",
+   "Multiple": "0",
+   "Options": "",
+   "Default": ""
+  }
+ },
+ "CONSTANTS": [],
+ "DOCUMENT_FIELDS": {}
+}

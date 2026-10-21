@@ -1,0 +1,6 @@
+# dev-only гейт (план bpt-builder-core T1). Runtime bpt_*.py — zero-dep:
+# эти пакеты НЕ импортируются кодом тулчейна ни в одной ветке; их тянут
+# только tests/ (pytest-адаптер, property-тесты) и линтер.
+pytest>=8
+hypothesis>=6
+ruff>=0.6
